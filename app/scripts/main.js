@@ -1,15 +1,24 @@
 require([
+  // dojo modules
+  'dojo/dom',
+  'dojo/on',
+  'dojo/_base/array',
+  'dojo/_base/Color',
+
+  // esri modules
   'esri/map',
-  'esri/Color',
-  'esri/symbols/SimpleLineSymbol',
-  'esri/symbols/SimpleMarkerSymbol',
-  'esri/graphic'
+  'esri/tasks/query',
+  'esri/tasks/QueryTask',
+  'esri/symbols/SimpleMarkerSymbol'
 ], function(
-  Map,
+  dom,
+  on,
+  array,
   Color,
-  SimpleLineSymbol,
-  SimpleMarkerSymbol,
-  Graphic
+  Map,
+  Query,
+  QueryTask,
+  SimpleMarkerSymbol
 ){
 
   // create a new map instance
@@ -19,36 +28,62 @@ require([
     zoom: 10
   });
 
-  // when the map is clicked
-  map.on('click', function(e) {
+  // save the url of the feature service in a variable
+  var url = 'http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/la_county_labor_centroid/FeatureServer/0'
 
-    // save the map point from the click event to a variable
-    var mapPoint = e.mapPoint,
+  // create a new simple marker symbol to display the features retrieved
+  var markerSymbol = new SimpleMarkerSymbol(
+    SimpleMarkerSymbol.STYLE_SQUARE,
+    10,
+    null,
+    new Color([50, 50, 255])
+  );
 
+  // function loading graphics into default map graphics layer
+  var onQuerySuccess = function(featureSet){
 
-      // create a graphic object using the properties set up previously
-      graphic = new Graphic(
+    // clear the graphics layer
+    map.graphics.clear();
 
-        // create the graphic at the click event map point
-        mapPoint,
+    // iterate the features in the feature set
+    array.forEach(featureSet.features, function(feature){
 
-        // create a simple marker symbol
-        new SimpleMarkerSymbol(
-          SimpleMarkerSymbol.STYLE_CIRCLE, // use the circle style
-          24, // set the symbol size
+      // set the symbology to the marker symbol
+      feature.setSymbol(markerSymbol);
 
-          // create a line object
-          new SimpleLineSymbol(
-            SimpleLineSymbol.STYLE_SOLID, // use the solid line style
-            new Color([255, 0, 0]),  // set the line color
-            3  // set the line weight
-          ),
+      // add the feature to the map graphics layer
+      map.graphics.add(feature);
+    });
+  };
 
-          new Color([255, 255, 0, 0.75]) // use a color object to set the fill for the circle
-        )
-      );
+  // error function
+  var onError = function(error){
+    console.error('An error occurred in the query: ', error);
+  };
 
-    // add the new graphic to the map
-    map.graphics.add(graphic);
+  // click event listener on dropdown selector
+  on(dom.byId('population'), 'change', function(e){
+
+    // save the selected value in a variable
+    var population = e.target.value;
+
+    // if the population selected is a valid value
+    if (population.length > 0){
+
+      // create a new query task object instance using the feature service rest endpoint
+      var queryTask = new QueryTask(url);
+
+      // create a new query object instance
+      var query = new Query();
+
+      // set the where sql clause for the query object
+      query.where = 'TOTAL_POP > ' + population;
+
+      // enable the query task to return geometry
+      query.returnGeometry = true;
+
+      // execute the query on the query task and use promise to handle results
+      queryTask.execute(query).then(onQuerySuccess, onError);
+    }
   });
 });
