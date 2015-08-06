@@ -5,12 +5,16 @@ require([
 
   // esri modules
   'esri/map',
-  'esri/layers/FeatureLayer'
+  'esri/layers/FeatureLayer',
+  'esri/toolbars/draw',
+  'esri/tasks/query'
 ], function(
   dom,
   on,
   Map,
-  FeatureLayer
+  FeatureLayer,
+  Draw,
+  Query
 ){
 
   // create a new map instance
@@ -24,22 +28,37 @@ require([
   var url = 'http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/la_county_labor_centroid/FeatureServer/0'
 
   // create a new feature layer object instance
-  var featureLayer = new FeatureLayer(url);
+  var featureLayer = new FeatureLayer(url,{
+    mode: FeatureLayer.MODE_SELECTION
+  });
+
+  // create an new draw toolbar object instance and attach it to the map object
+  var drawToolbar = new Draw(map);
+
+  // add event listener for map drawing event
+  drawToolbar.on('draw-end', function(e){
+
+    // turn off the draw toolba
+    drawToolbar.deactivate();
+
+    // create a new query object instance
+    var query = new Query();
+
+    // create a geometry query from the draw geometry
+    query.geometry = e.geometry;
+
+    // select features from the feature service using the geometry
+    featureLayer.selectFeatures(query);
+  });
 
   // add the feature layer to the map
   map.addLayer(featureLayer);
 
-  // add selection event listener
-  on(dom.byId('population'), 'change', function(e){
+  // add click event listener for button
+  on(dom.byId('drawPolygon'), 'click', function(){
 
-    // save the selection in a variable
-    var population = e.target.value;
-
-    // create a definition expression using the selected value
-    var definitionExpression = 'TOTAL_POP > ' + population;
-
-    // apply the definition expression
-    featureLayer.setDefinitionExpression(definitionExpression);
+    // activate the draw toolbar to draw a polygon
+    drawToolbar.activate(Draw.POLYGON)
   });
 
 });
