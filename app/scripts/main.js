@@ -2,23 +2,15 @@ require([
   // dojo modules
   'dojo/dom',
   'dojo/on',
-  'dojo/_base/array',
-  'dojo/_base/Color',
 
   // esri modules
   'esri/map',
-  'esri/tasks/query',
-  'esri/tasks/QueryTask',
-  'esri/symbols/SimpleMarkerSymbol'
+  'esri/layers/FeatureLayer'
 ], function(
   dom,
   on,
-  array,
-  Color,
   Map,
-  Query,
-  QueryTask,
-  SimpleMarkerSymbol
+  FeatureLayer
 ){
 
   // create a new map instance
@@ -31,59 +23,23 @@ require([
   // save the url of the feature service in a variable
   var url = 'http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/la_county_labor_centroid/FeatureServer/0'
 
-  // create a new simple marker symbol to display the features retrieved
-  var markerSymbol = new SimpleMarkerSymbol(
-    SimpleMarkerSymbol.STYLE_SQUARE,
-    10,
-    null,
-    new Color([50, 50, 255])
-  );
+  // create a new feature layer object instance
+  var featureLayer = new FeatureLayer(url);
 
-  // function loading graphics into default map graphics layer
-  var onQuerySuccess = function(featureSet){
+  // add the feature layer to the map
+  map.addLayer(featureLayer);
 
-    // clear the graphics layer
-    map.graphics.clear();
-
-    // iterate the features in the feature set
-    array.forEach(featureSet.features, function(feature){
-
-      // set the symbology to the marker symbol
-      feature.setSymbol(markerSymbol);
-
-      // add the feature to the map graphics layer
-      map.graphics.add(feature);
-    });
-  };
-
-  // error function
-  var onError = function(error){
-    console.error('An error occurred in the query: ', error);
-  };
-
-  // click event listener on dropdown selector
+  // add selection event listener
   on(dom.byId('population'), 'change', function(e){
 
-    // save the selected value in a variable
+    // save the selection in a variable
     var population = e.target.value;
 
-    // if the population selected is a valid value
-    if (population.length > 0){
+    // create a definition expression using the selected value
+    var definitionExpression = 'TOTAL_POP > ' + population;
 
-      // create a new query task object instance using the feature service rest endpoint
-      var queryTask = new QueryTask(url);
-
-      // create a new query object instance
-      var query = new Query();
-
-      // set the where sql clause for the query object
-      query.where = 'TOTAL_POP > ' + population;
-
-      // enable the query task to return geometry
-      query.returnGeometry = true;
-
-      // execute the query on the query task and use promise to handle results
-      queryTask.execute(query).then(onQuerySuccess, onError);
-    }
+    // apply the definition expression
+    featureLayer.setDefinitionExpression(definitionExpression);
   });
+
 });
